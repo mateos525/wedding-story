@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weselna księga wspomnień</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="home-screen" class="screen active">
+        <div class="hero-card glass">
+          <p class="eyebrow">Weselna księga wspomnień</p>
+          <h1 id="coupleNames">Martyna &amp; Jakub</h1>
+          <p id="weddingDate" class="date">20.06.2026</p>
+          <p id="welcomeTitle" class="lead">Cieszymy się, że jesteś z nami!</p>
+          <p id="welcomeText" class="muted center-text">
+            Dodaj zdjęcia albo krótkie filmiki z wesela.
+          </p>
+
+        <div class="hero-actions">
+          <button id="goUploadBtn" class="btn btn-primary">
+            Prześlij nam pamiątkę ❤️
+          </button>
+        </div>
+
+          <p class="muted small-gap center-text">
+          </p>
+        </div>
+      </section>
+
+      <section id="upload-screen" class="screen">
+        <div class="form-card glass">
+          <button class="back-link" data-back>← Wróć</button>
+
+          <h2>Prześlij zdjęcia lub filmiki</h2>
+          <p class="muted">
+            Możesz zaznaczyć kilka zdjęć i filmów naraz. 
+          </p>
+          </p>Zalecamy nagrac filmik wczesniej aparatem i wtedy przesłac w celu lepszej jakości.</p> 
+
+          <label class="label" for="uploadGuestName">Od kogo?</label>
+          <input id="uploadGuestName" class="input" type="text" maxlength="80" placeholder="Np. Kasia i Michał" />
+
+          <label class="label" for="uploadComment">Krótki komentarz</label>
+          <textarea id="uploadComment" class="input textarea" maxlength="240" placeholder="Np. Najlepsza impreza roku"></textarea>
+
+          <div class="actions two-cols">
+            <button id="chooseGalleryBtn" class="btn btn-primary" type="button">Wybierz z galerii</button>
+        
+          </div>
+
+          <input id="mediaFile" class="hidden-file" type="file" accept="image/*,video/*" multiple />
+
+          <p id="compressionInfo" class="muted small-gap"></p>
+          </p>Maksymalnie 15 plików na raz.</p> 
+          <p id="fileSummary" class="muted small-gap">Nie wybrano plików.</p>
+          <ul id="fileList" class="selected-files"></ul>
+
+          <label class="checkbox-row">
+            <input id="uploadConsent" type="checkbox" />
+            <span>Potwierdzam, że mogę przesłać te materiały i przekazać je Parze Młodej.</span>
+          </label>
+
+          <button id="sendUploadBtn" class="btn btn-primary full-width">Wyślij materiały</button>
+          <p id="uploadStatus" class="status"></p>
+        </div>
+      </section>
+
+      <section id="thankyou-screen" class="screen">
+        <div class="thankyou-card glass center-text">
+          <p class="eyebrow">Dziękujemy</p>
+          <h2 id="thankYouTitle">Dziękujemy za pamiątkę ❤️</h2>
+          <p id="thankYouText" class="muted">Twoje materiały trafiły do nas i będą piękną pamiątką po weselu.</p>
+          <button id="resetBtn" class="btn btn-primary">Dodaj kolejne materiały</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

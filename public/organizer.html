@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel organizatora</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .admin-list { list-style: none; padding: 0; display: grid; gap: 10px; }
+      .admin-list li { background: rgba(255,255,255,.14); padding: 12px; border-radius: 14px; }
+      .admin-list a { color: #fed7aa; font-weight: 800; }
+      .admin-bar { display: grid; gap: 10px; margin: 16px 0; }
+
+      .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+      .stat-card { background: rgba(255,255,255,.12); border-radius: 14px; padding: 12px; }
+      .stat-card strong { display: block; font-size: 22px; }
+      .danger-zone { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.18); }
+      .btn-danger { background: #991b1b; color: white; }
+      .memory-card {
+  background: rgba(255,255,255,.14);
+  padding: 18px;
+  border-radius: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.memory-header,
+.memory-comment {
+  display: grid;
+  gap: 4px;
+}
+
+.memory-header span {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.memory-comment span {
+  font-size: 15px;
+  opacity: .95;
+}
+
+.memory-date {
+  font-size: 14px;
+  opacity: .85;
+}
+
+.admin-item-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preview-box {
+  display: none;
+  margin-top: 10px;
+}
+
+.preview-box.open {
+  display: block;
+}
+
+.preview-box img,
+.preview-box video {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: rgba(0,0,0,.25);
+}
+
+.preview-box img,
+.preview-box video {
+  cursor: zoom-in;
+}
+
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.92);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.lightbox.open {
+  display: flex;
+}
+
+.lightbox-content img,
+.lightbox-content video {
+  max-width: 95vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  font-size: 36px;
+  background: white;
+  color: black;
+  border: 0;
+  border-radius: 999px;
+  width: 52px;
+  height: 52px;
+  cursor: pointer;
+}
+    </style>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="screen active">
+        <div class="form-card glass">
+          <h1 style="font-size:42px">Panel organizatora</h1>
+          <p class="muted">Zaloguj się do panelu organizatora.</p>
+
+        <div class="admin-bar" id="loginBox">
+          <input id="token" class="input" type="password" placeholder="Hasło organizatora" />
+          <button id="loadBtn" class="btn btn-primary">Zaloguj</button>
+        </div>
+        
+        <div id="stats" class="stats-grid"></div>
+
+        <div class="admin-bar" id="panelActions" style="display:none;">
+          <button id="statsBtn" class="btn btn-secondary">Odśwież statystyki</button>
+        <button id="downloadAllBtn" class="btn btn-secondary">Pobierz wszystko ZIP</button>
+        </div>
+
+        <div class="danger-zone" id="dangerZone" style="display:none;">
+          <button id="clearAllBtn" class="btn btn-danger">
+            Usun wszystkie materiały
+          </button>
+
+          <p class="muted">
+            Uwaga: usuwa pliki z serwera i czyści listę materiałów.
+            Najpierw pobierz ZIP, jeśli chcesz zachować testy.
+          </p>
+        </div>
+
+          <p id="status" class="status"></p>
+          <ul id="list" class="admin-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <div id="lightbox" class="lightbox">
+    <button id="lightboxClose" class="lightbox-close">×</button>
+    <div id="lightboxContent" class="lightbox-content"></div>
+    </div>
+
+
+    <script>
+      const tokenEl = document.getElementById('token');
+      const loginBox = document.getElementById('loginBox');
+      const panelActions = document.getElementById('panelActions');
+      const dangerZone = document.getElementById('dangerZone');
+      const listEl = document.getElementById('list');
+      const statusEl = document.getElementById('status');
+      const statsEl = document.getElementById('stats');
+      
+
+      function getToken() {
+        return tokenEl.value.trim();
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('\"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+
+      async function loadStats() {
+        if (!getToken()) {
+          statusEl.textContent = 'Najpierw wpisz token.';
+          return;
+        }
+
+        const res = await fetch('/api/storage-stats', {
+          headers: { 'x-admin-token': getToken() }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Nie udało się pobrać statystyk.');
+        }
+
+        statsEl.innerHTML = `
+          <div class="stat-card"><span>📸 Zdjęcia</span><strong>${data.photos}</strong></div>
+          <div class="stat-card"><span>🎥 Filmy</span><strong>${data.videos}</strong></div>
+          <div class="stat-card"><span>👥 Goście / pamiątki</span><strong>${data.guests || data.totalItems}</strong></div>
+          <div class="stat-card"><span>💾 Zajęte miejsce</span><strong>${data.readableDiskSize}</strong></div>
+        `;
+      }
+
+      async function clearAllMaterials() {
+        if (!getToken()) {
+          statusEl.textContent = 'Najpierw wpisz token.';
+          return;
+        }
+
+        const confirmed = confirm('Na pewno usunąć wszystkie testowe zdjęcia, filmy i komentarze? Tego nie da się cofnąć.');
+        if (!confirmed) return;
+
+        statusEl.textContent = 'Czyszczenie materiałów...';
+
+        try {
+          const res = await fetch('/api/admin/clear-all', {
+            method: 'DELETE',
+            headers: { 'x-admin-token': getToken() }
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.error || 'Nie udało się wyczyścić materiałów.');
+          }
+
+          listEl.innerHTML = '';
+          statusEl.textContent = `Usunięto ${data.deletedFiles} plików (${data.readableDeletedSize}).`;
+          await loadStats();
+        } catch (err) {
+          statusEl.textContent = err.message;
+        }
+      }
+
+       async function loadItems() {
+    statusEl.textContent = 'Ładowanie...';
+    listEl.innerHTML = '';
+
+    try {
+      const res = await fetch('/api/messages', {
+        headers: { 'x-admin-token': getToken() }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Brak dostępu.');
+      }
+
+      loginBox.style.display = 'none';
+      panelActions.style.display = 'grid';
+      dangerZone.style.display = 'block';
+
+      statusEl.textContent = `Liczba materiałów: ${data.items.length}`;
+      await loadStats();
+
+      listEl.innerHTML = data.items.map((item, index) => {
+      const files = item.files || [];
+      const filesCount = files.length;
+      const previewId = `preview-${item.id}`;
+
+      const preview = files.map((file) => {
+        const previewUrl = `/api/preview/${file.id}?token=${encodeURIComponent(getToken())}`;
+
+        return file.kind === 'video'
+          ? `<video src="${previewUrl}" controls playsinline></video>`
+          : `<img src="${previewUrl}" alt="Pamiątka" loading="lazy" />`;
+      }).join('');
+
+      const downloadUrl = `/api/download-memory/${item.id}?token=${encodeURIComponent(getToken())}`;
+  return `
+    <li class="memory-card">
+      <div class="memory-header">
+        <strong>📸 Pamiątka od:</strong>
+        <span>${escapeHtml(item.guestName || 'Gość bez podpisu')}</span>
+      </div>
+
+      <div class="memory-comment">
+        <strong>💬 Komentarz:</strong>
+        <span>${escapeHtml(item.comment || 'Brak komentarza')}</span>
+      </div>
+
+      <div class="memory-date">
+        📅 ${new Date(item.createdAt).toLocaleString('pl-PL')}
+      </div>
+      <div class="memory-date">
+        📎 Liczba plików: ${filesCount}
+      </div>
+
+      <div class="admin-item-actions">
+        <button class="btn btn-secondary preview-toggle" type="button" data-target="${previewId}">
+          👁 Zobacz pamiątkę
+        </button>
+        <a class="btn btn-ghost" href="${downloadUrl}">⬇ Pobierz</a>
+      </div>
+
+      <div id="${previewId}" class="preview-box">
+        ${preview}
+      </div>
+    </li>
+  `;
+}).join('');
+document.querySelectorAll('.preview-toggle').forEach((button) => {
+  button.addEventListener('click', () => {
+    const box = document.getElementById(button.dataset.target);
+    const isOpen = box.classList.toggle('open');
+    button.textContent = isOpen ? 'Ukryj pamiątkę' : '👁 Zobacz pamiątkę';
+  });
+});
+    } catch (err) {
+      statusEl.textContent = err.message;
+    }
+  }
+
+      document.getElementById('loadBtn').addEventListener('click', loadItems);
+      document.getElementById('statsBtn').addEventListener('click', async () => {
+        try {
+          await loadStats();
+          statusEl.textContent = 'Statystyki odświeżone.';
+        } catch (err) {
+          statusEl.textContent = err.message;
+        }
+      });
+      document.getElementById('clearAllBtn').addEventListener('click', clearAllMaterials);
+
+      document.getElementById('downloadAllBtn').addEventListener('click', () => {
+        if (!getToken()) {
+          statusEl.textContent = 'Najpierw wpisz token.';
+          return;
+        }
+
+        window.location.href = `/api/download-all?token=${encodeURIComponent(getToken())}`;
+      });
+      const lightbox = document.getElementById('lightbox');
+const lightboxContent = document.getElementById('lightboxContent');
+const lightboxClose = document.getElementById('lightboxClose');
+
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  lightboxContent.innerHTML = '';
+}
+
+document.addEventListener('click', (event) => {
+  const media = event.target.closest('.preview-box img, .preview-box video');
+
+  if (!media) return;
+
+  if (media.tagName === 'VIDEO') {
+    lightboxContent.innerHTML = `
+      <video src="${media.currentSrc || media.src}" controls autoplay playsinline></video>
+    `;
+  } else {
+    lightboxContent.innerHTML = `
+      <img src="${media.src}" alt="Pamiątka" />
+    `;
+  }
+
+  lightbox.classList.add('open');
+});
+
+lightbox.addEventListener('click', (event) => {
+  if (event.target === lightbox) {
+    closeLightbox();
+  }
+});
+
+lightboxClose.addEventListener('click', closeLightbox);
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeLightbox();
+  }
+});
+    </script>
+  </body>
+</html>
