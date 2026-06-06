@@ -5,10 +5,10 @@
   "welcomeText": "Dodaj zdjęcia albo krótkie filmiki z wesela.",
   "thankYouTitle": "Dziękujemy za pamiątkę ❤️",
   "thankYouText": "Twoje materiały trafiły do nas i będą piękną pamiątką po weselu.",
-  "maxDurationSeconds": 30,
+  "maxDurationSeconds": 15,
   "backgroundImage": "/assets/inspiracja.jpg",
-  "maxFiles": 15,
-  "maxFileSizeMb":100,
+  "maxFiles": 10,
+  "maxFileSizeMb":80,
   "compressImages": true,
   "imageMaxWidth": 2000,
   "imageQuality": 0.82

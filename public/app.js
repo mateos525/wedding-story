@@ -108,6 +108,40 @@ async function compressImage(file) {
   });
 }
 
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error('Nie można odczytać długości filmu.'));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
+}
+
+function showToast(message, type = 'error') {
+  const existing = document.querySelector('.toast-message');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = `toast-message ${type}`;
+  toast.textContent = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
 async function prepareFiles(fileList) {
   const incoming = Array.from(fileList || []);
   const maxFiles = Number(state.config?.maxFiles || 30);
@@ -127,7 +161,23 @@ async function prepareFiles(fileList) {
       rejected.push(`${file.name}: to nie jest zdjęcie ani film.`);
       continue;
     }
+  if (isVideo(file)) {
+  const maxDurationSeconds = Number(state.config?.maxDurationSeconds || 15);
 
+  try {
+    const duration = await getVideoDuration(file);
+
+    if (duration > maxDurationSeconds) {
+      rejected.push(`${file.name}: film może mieć maksymalnie ${maxDurationSeconds} sekund.`);
+      showToast('Twój filmik jest za długi. Maksymalna długość filmu to 15 sekund.');
+      continue;
+    }
+  } catch {
+    rejected.push(`${file.name}: nie udało się sprawdzić długości filmu.`);
+    showToast('Nie udało się sprawdzić długości filmu. Spróbuj wybrać inny plik.');
+    continue;
+  }
+}
     let finalFile = file;
 
     try {
@@ -152,18 +202,23 @@ async function prepareFiles(fileList) {
   const merged = [...state.selectedFiles, ...accepted];
 
   if (merged.length > maxFiles) {
-    setStatus(`Za dużo plików naraz. Limit to ${maxFiles}.`, 'error');
-    return;
-  }
+  showToast(`Możesz wybrać maksymalnie ${maxFiles} plików.`);
+
+  state.selectedFiles = [];
+  renderSelectedFiles();
+
+  setStatus(`Za dużo plików naraz. Limit to ${maxFiles}.`, 'error');
+  return;
+}
 
   state.selectedFiles = merged;
   renderSelectedFiles();
 
   if (rejected.length) {
-    setStatus(rejected.join('\n'), 'error');
-  } else {
-    setStatus('');
-  }
+  setStatus('Niektóre pliki zostały odrzucone.', 'error');
+} else {
+  setStatus('');
+}
 
   els.mediaFile.value = '';
 }
@@ -211,7 +266,7 @@ function renderSelectedFiles() {
       ${videos.length > 0 ? `
       <p>
     🎥 Filmiki: <strong>${videos.length}</strong>
-      /p>
+      </p>
     ` : ''}
 
       <button id="clearFilesBtn" class="btn btn-ghost">
@@ -280,9 +335,16 @@ async function submitUpload() {
       body: formData
     });
 
-    const data = await response.json();
+    let data = {};
+
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
+    }
 
     if (!response.ok) {
+      showToast(data.error || 'Za dużo plików lub błąd wysyłania.');
       throw new Error(data.error || 'Nie udało się wysłać materiałów.');
     }
 
@@ -293,8 +355,10 @@ async function submitUpload() {
     els.uploadConsent.checked = false;
 
     switchScreen('thankyou');
+    
   } catch (error) {
-    setStatus(error.message || 'Nie udało się wysłać materiałów.', 'error');
+  showToast(error.message || 'Nie udało się wysłać materiałów.');
+  setStatus(error.message || 'Nie udało się wysłać materiałów.', 'error');
   } finally {
     els.sendUploadBtn.disabled = false;
   }
