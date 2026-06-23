@@ -162,14 +162,14 @@ async function prepareFiles(fileList) {
       continue;
     }
   if (isVideo(file)) {
-  const maxDurationSeconds = Number(state.config?.maxDurationSeconds || 15);
+  const maxDurationSeconds = 1800;
 
   try {
     const duration = await getVideoDuration(file);
 
     if (duration > maxDurationSeconds) {
       rejected.push(`${file.name}: film może mieć maksymalnie ${maxDurationSeconds} sekund.`);
-      showToast('Twój filmik jest za długi. Maksymalna długość filmu to 15 sekund.');
+      showToast(`Twój filmik jest za długi. Maksymalna długość filmu to ${maxDurationSeconds} sekund.`);
       continue;
     }
   } catch {
